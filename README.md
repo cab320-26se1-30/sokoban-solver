@@ -1,6 +1,6 @@
 ### Code flowchart
 
-```{mermaid}
+```mermaid
 flowchart TB
  subgraph SokobanPuzzle_Class["SokobanPuzzle Class"]
         InitPuzzle["Instantiate SokobanPuzzle<br>pass warehouse + taboo set"]
