@@ -1,12 +1,12 @@
-### Code flow-chart
+### Code flowchart
 
 ```mermaid
 flowchart TB
  subgraph SokobanPuzzle_Class["SokobanPuzzle Class"]
         InitPuzzle["Instantiate SokobanPuzzle<br>pass warehouse + taboo set"]
-        note_init["IMPLEMENT: SokobanPuzzle.\_\_init\_\_() mySokobanPuzzle.py<br>store walls, targets, taboo"]
+        note_init["IMPLEMENT: SokobanPuzzle.__init__() mySokobanPuzzle.py<br>store walls, targets, taboo"]
         StateDef["Define state<br>worker pos + sorted box tuple"]
-        note_state["IMPLEMENT: SokobanPuzzle.\_\_init\_\_() mySokobanPuzzle.py<br>use sorted tuples for hashability"]
+        note_state["IMPLEMENT: SokobanPuzzle.__init__() mySokobanPuzzle.py<br>use sorted tuples for hashability"]
   end
  subgraph Puzzle_Logic["SokobanPuzzle Methods"]
         Expand["Expand node"]
@@ -17,15 +17,16 @@ flowchart TB
         Cost["path_cost(c, s, a, s2)<br>move: c+1 / push: c+1+box_weight"]
         note_cost["IMPLEMENT: Problem.path_cost() search.py<br>CRITICAL: g-score logic"]
   end
- subgraph Search_Algorithm["search.py — A* Graph Search"]
+ subgraph Search_Algorithm["search.py - A* Graph Search"]
         CallSearch["Call search.astar_graph_search<br>puzzle passed as search.Problem"]
         PopNode["Pop lowest f-score node<br>f = g (path cost) + h (heuristic)"]
         GoalTestNode["goal_test(state)<br>all boxes on targets?"]
         note_goal["IMPLEMENT: Problem.goal_test() search.py"]
         GoalTest{"Solved?"}
         Puzzle_Logic
-        Heuristic["h(node) — heuristic estimate<br>Manhattan dist, box→nearest target × weight"]
+        Heuristic["h(node) - heuristic estimate<br>Manhattan dist, box→nearest target × weight"]
         note_h["OPTIONAL: h() speeds up A*<br>admissible: Manhattan dist × weight"]
+        note_value["IMPLEMENT: Problem.value() search.py"]
         PushQueue["Push child nodes to frontier"]
   end
     InitPuzzle -.-> note_init
@@ -46,7 +47,7 @@ flowchart TB
     Cost --> Heuristic
     Heuristic --> PushQueue
     PushQueue --> PopNode
-    Taboo["Identify taboo cells<br>taboo_cells(warehouse) — corners + wall-runs"] -.-> note_taboo["IMPLEMENT: taboo_cells() mySokobanSolver.py<br>non-target dead zones"]
+    Taboo["Identify taboo cells<br>taboo_cells(warehouse) - corners + wall-runs"] -.-> note_taboo["IMPLEMENT: taboo_cells() mySokobanSolver.py<br>non-target dead zones"]
     Start(["solve_weighted_sokoban(warehouse)"]) --> Taboo
     Taboo --> InitPuzzle
     StateDef --> CallSearch
@@ -55,6 +56,7 @@ flowchart TB
     ReturnSuccess --> End(["End"])
     GoalTest -- Exhausted --> ReturnImpossible@{ label: "return 'Impossible', None" }
     ReturnImpossible --> End
+    Heuristic -.-> note_value
 
     ReturnImpossible@{ shape: rect}
      InitPuzzle:::impl
@@ -77,6 +79,13 @@ flowchart TB
      ReturnSuccess:::success
      End:::terminal
      ReturnImpossible:::fail
+     PushQueue:::terminal
+     CallSearch:::terminal
+     PopNode:::terminal
+     GoalTest:::terminal
+     Expand:::terminal
+     ExtractSuccess:::terminal
+     note_value:::note
     classDef terminal fill:#D3D1C7,stroke:#5F5E5A,color:#2C2C2A
     classDef note fill:#FAEEDA,stroke:#FAC775,color:#633806,font-size:11px
     classDef fail fill:#F7C1C1,stroke:#E24B4A,color:#501313
