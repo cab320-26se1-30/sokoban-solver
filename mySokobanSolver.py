@@ -46,6 +46,14 @@ def my_team():
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+### Dictionary of possible actions
+actions = {
+    'Left': (-1, 0),
+    'Right': (1, 0),
+    'Up': (0, -1),
+    'Down': (0, 1)
+}
+
 
 def taboo_cells(warehouse):
     '''  
@@ -105,26 +113,96 @@ class SokobanPuzzle(search.Problem):
         state, if there is a unique goal.  Your subclass's constructor can add
         other arguments."""
         self.warehouse = warehouse
-        raise NotImplementedError
+
+        # storing static data as sets for fast lookup
+        self.walls = set(warehouse.walls)
+        self.targets = set(warehouse.targets)
+        self.weights = set(warehouse.weights)
+        self.taboo_cells = set(warehouse.taboo_cells) ### Replace this with set(find_taboo_cells) or whatever when implemented
+
+        # initial state
+        worker_pos = warehouse.worker
+        box_positions = warehouse.boxes
+
+        initial_state = (worker_pos, tuple(sorted(box_positions)))
+
+        super().__init__(initial_state)
 
     def actions(self, state):
         """Return the actions that can be executed in the given
         state. The result would typically be a list, but if there are
         many actions, consider yielding them one at a time in an
         iterator, rather than building them all at once."""
-        raise NotImplementedError
+        
+        # parse state into worker position and box positions
+        worker_pos, box_positions = state
+        box_positions = set(box_positions)
+        worker_x, worker_y = worker_pos
+
+        valid_actions = []
+        possibe_actions = ['Left', 'Right', 'Up', 'Down']
+
+        for action in possibe_actions:
+            # calculate new worker position
+            dx, dy = actions[action]
+            new_worker_pos = (worker_x + dx, worker_y + dy)
+
+            # check if worker is moving to an empty cell
+            if new_worker_pos not in self.walls and new_worker_pos not in box_positions:
+                valid_actions.append(action)
+                continue
+
+            # check cell beyond box if pushing
+            if new_worker_pos in box_positions:
+                new_box_pos = (new_worker_pos[0] + dx, new_worker_pos[1] + dy)
+                
+                # check if the box's poisition is valid:
+                # - not a wall
+                # - not another box
+                # - not a taboo cell
+                if new_box_pos not in self.walls and \
+                   new_box_pos not in box_positions and \
+                   new_box_pos not in self.taboo_cells:
+                    valid_actions.append(action)
+
+        return valid_actions
 
     def result(self, state, action):
         """Return the state that results from executing the given
         action in the given state. The action must be one of
         self.actions(state)."""
-        raise NotImplementedError
+
+        # parse state into worker position and box positions
+        worker_pos, box_positions = state
+        box_positions = set(box_positions)
+        worker_x, worker_y = worker_pos
+
+        # check if action is valid
+        if action not in self.actions(state):
+            return state
+        
+        # calculate new worker position
+        dx, dy = actions[action]
+        new_worker_pos = (worker_x + dx, worker_y + dy)
+
+        # check if worker is moving into a box, then push it
+        if new_worker_pos in box_positions:
+            new_box_pos = (new_worker_pos[0] + dx, new_worker_pos[1] + dy)
+
+            # update box positions list
+            box_positions.remove(new_worker_pos)
+            box_positions.add(new_box_pos)
+        
+        # return new state
+        return (new_worker_pos, tuple(sorted(box_positions)))
+
 
     def goal_test(self, state):
         """Return True if the state is a goal. The default method compares the
         state to self.goal, as specified in the constructor. Override this
         method if checking against a single self.goal is not enough."""
-        return state == self.goal
+        _, box_positions = state
+        return set(box_positions) == self.targets
 
     def path_cost(self, c, state1, action, state2):
         """Return the cost of a solution path that arrives at state2 from
