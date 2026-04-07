@@ -117,12 +117,16 @@ class SokobanPuzzle(search.Problem):
         # storing static data as sets for fast lookup
         self.walls = set(warehouse.walls)
         self.targets = set(warehouse.targets)
-        self.weights = set(warehouse.weights)
         self.taboo_cells = set(warehouse.taboo_cells) ### Replace this with set(find_taboo_cells) or whatever when implemented
+
+        # map box weights to their positions
+        self.box_weights = {
+            box: weight for box, weight in zip(warehouse.boxes, warehouse.weights)
+        }
 
         # initial state
         worker_pos = warehouse.worker
-        box_positions = warehouse.boxes
+        box_positions = tuple(sorted(warehouse.boxes))
 
         initial_state = (worker_pos, tuple(sorted(box_positions)))
 
@@ -210,12 +214,52 @@ class SokobanPuzzle(search.Problem):
         is such that the path doesn't matter, this function will only look at
         state2.  If the path does matter, it will consider c and maybe state1
         and action. The default method costs 1 for every step in the path."""
-        return c + 1
+        _, box1 = state1
+        _, box2 = state2
+        
+        box1_state = set(box1)
+        box2_state = set(box2)
+
+        # check if no box pushed
+        if box1_state == box2_state:
+            return c + 1
+        
+        # find the box that was pushed
+        origin = list(box1_state - box2_state)[0]
+        destination = list(box2_state - box1_state)[0]
+
+        weight = self.box_weights[origin]
+
+        # update weight mapping for new box position
+        self.box_weights[destination] = weight
+        del self.box_weights[origin]
+
+        return c + 1 + weight
+
+    def h(self, node):
+        _, box_positions = node.state
+
+        total = 0
+        
+        # calculate Manhattan distance to closest target
+        for box in box_positions:
+            # check if box is placed on target
+            if box in self.targets:
+                continue
+
+            distance = min(abs(box[0] - target[0]) + abs(box[1] - target[1]) for target in self.targets)
+            
+            # get box weight
+            weight = self.box_weights[box]
+    
+            total += distance * weight
+        
+        return total
 
     def value(self, state):
         """For optimization problems, each state has a value.  Hill-climbing
         and related algorithms try to maximize this value."""
-        raise NotImplementedError
+        return 0
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
