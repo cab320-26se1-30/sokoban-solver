@@ -2,90 +2,61 @@
 
 ```mermaid
 flowchart TB
- subgraph SokobanPuzzle_Class["SokobanPuzzle Class"]
-        InitPuzzle["Instantiate SokobanPuzzle<br>pass warehouse + taboo set"]
+ subgraph SokobanPuzzle_Class["SokobanPuzzle Class & Init"]
+        Start(["solve_weighted_sokoban(warehouse)"])
+        InitPuzzle["Instantiate SokobanPuzzle<br>problem = SokobanPuzzle(warehouse)"]
         note_init["IMPLEMENT: SokobanPuzzle.__init__() mySokobanPuzzle.py<br>store walls, targets, taboo"]
-        StateDef["Define state<br>worker pos + sorted box tuple"]
-        note_state["IMPLEMENT: SokobanPuzzle.__init__() mySokobanPuzzle.py<br>use sorted tuples for hashability"]
-  end
- subgraph Puzzle_Logic["SokobanPuzzle Methods"]
-        Expand["Expand node"]
-        Actions["actions(state)<br>valid moves, skip walls + taboo pushes"]
-        note_actions["IMPLEMENT: Problem.actions() search.py"]
-        Result["result(state, action)<br>update worker + box coordinates"]
-        note_result["IMPLEMENT: Problem.result() search.py"]
-        Cost["path_cost(c, s, a, s2)<br>move: c+1 / push: c+1+box_weight"]
-        note_cost["IMPLEMENT: Problem.path_cost() search.py<br>CRITICAL: g-score logic"]
+        GoalTestInitial["goal_test(initial)<br>check if already solved?"]
+        note_goal_init["EXTEND and IMPLEMENT Problem.goal_test()<br>using SokobanPuzzle class"]
+        ReturnEmpty["Return [], 0<br>Puzzle already solved"]
   end
  subgraph Search_Algorithm["search.py - A* Graph Search"]
-        CallSearch["Call search.astar_graph_search<br>puzzle passed as search.Problem"]
-        PopNode["Pop lowest f-score node<br>f = g (path cost) + h (heuristic)"]
-        GoalTestNode["goal_test(state)<br>all boxes on targets?"]
-        note_goal["IMPLEMENT: Problem.goal_test() search.py"]
-        GoalTest{"Solved?"}
-        Puzzle_Logic
-        Heuristic["h(node) - heuristic estimate<br>Manhattan dist, box→nearest target × weight"]
-        note_h["OPTIONAL: h() speeds up A*<br>admissible: Manhattan dist × weight"]
-        note_value["IMPLEMENT: Problem.value() search.py"]
-        PushQueue["Push child nodes to frontier"]
+        CallSearch["Call search.astar_graph_search<br>problem, h"]
+        note_h["DEFINE: h(node) as -SokobanPuzzle.value(node.state)"]
+        note_value["EXTEND and IMPLEMENT Problem.value()<br>using SokobanPuzzle class"]
+        CheckSolution{"Solution Found?<br>solution_node is None?"}
   end
-    InitPuzzle -.-> note_init
-    InitPuzzle --> StateDef
-    StateDef -.-> note_state
-    GoalTestNode -.-> note_goal
-    Actions -.-> note_actions
-    Result -.-> note_result
-    Cost -.-> note_cost
-    Expand --> Actions
-    Actions --> Result
-    Result --> Cost
-    Heuristic -.-> note_h
-    CallSearch --> PopNode
-    PopNode --> GoalTestNode
-    GoalTestNode --> GoalTest
-    GoalTest -- No --> Expand
-    Cost --> Heuristic
-    Heuristic --> PushQueue
-    PushQueue --> PopNode
-    Taboo["Identify taboo cells<br>taboo_cells(warehouse) - corners + wall-runs"] -.-> note_taboo["IMPLEMENT: taboo_cells() mySokobanSolver.py<br>non-target dead zones"]
-    Start(["solve_weighted_sokoban(warehouse)"]) --> Taboo
-    Taboo --> InitPuzzle
-    StateDef --> CallSearch
-    GoalTest -- Yes --> ExtractSuccess["Extract action sequence + path cost"]
-    ExtractSuccess --> ReturnSuccess["return action_list, cost"]
-    ReturnSuccess --> End(["End"])
-    GoalTest -- Exhausted --> ReturnImpossible@{ label: "return 'Impossible', None" }
-    ReturnImpossible --> End
-    Heuristic -.-> note_value
+ subgraph Puzzle_Logic["Result Extraction & Return"]
+        ExtractSol["Extract Action Sequence<br>solution_node.solution()"]
+        GetCost["Get Path Cost<br>solution_node.path_cost"]
+        ReturnSuccess["Return action_sequence, total_cost"]
+        ReturnImpossible["Return 'Impossible', None"]
+        End(["End"])
+  end
 
-    ReturnImpossible@{ shape: rect}
+    Start --> InitPuzzle
+    InitPuzzle -.-> note_init
+    InitPuzzle --> GoalTestInitial
+    GoalTestInitial -.-> note_goal_init
+    GoalTestInitial -- Yes --> ReturnEmpty
+    ReturnEmpty --> End
+    GoalTestInitial -- No --> CallSearch
+    CallSearch -.-> note_h
+    note_h -.-> note_value
+    CallSearch --> CheckSolution
+    CheckSolution -- Yes (None) --> ReturnImpossible
+    ReturnImpossible --> End
+    CheckSolution -- No (Node) --> ExtractSol
+    ExtractSol --> GetCost
+    GetCost --> ReturnSuccess
+    ReturnSuccess --> End
+
      InitPuzzle:::impl
      note_init:::note
-     StateDef:::impl
-     note_state:::note
-     Actions:::impl
-     note_actions:::note
-     Result:::impl
-     note_result:::note
-     Cost:::impl
-     note_cost:::note
-     GoalTestNode:::impl
-     note_goal:::note
-     Heuristic:::optional
+     GoalTestInitial:::impl
+     note_goal_init:::note
+     CallSearch:::terminal
      note_h:::note
-     Taboo:::impl
-     note_taboo:::note
+     note_value:::note
+     CheckSolution:::terminal
+     ExtractSol:::impl
+     GetCost:::impl
      Start:::terminal
      ReturnSuccess:::success
      End:::terminal
      ReturnImpossible:::fail
-     PushQueue:::terminal
-     CallSearch:::terminal
-     PopNode:::terminal
-     GoalTest:::terminal
-     Expand:::terminal
-     ExtractSuccess:::terminal
-     note_value:::note
+     ReturnEmpty:::success
+
     classDef terminal fill:#D3D1C7,stroke:#5F5E5A,color:#2C2C2A
     classDef note fill:#FAEEDA,stroke:#FAC775,color:#633806,font-size:11px
     classDef fail fill:#F7C1C1,stroke:#E24B4A,color:#501313
