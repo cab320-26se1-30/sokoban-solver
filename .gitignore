@@ -1,2 +1,3 @@
 warehouses/*
 !warehouses/.gitkeep
+__pycache__/*
