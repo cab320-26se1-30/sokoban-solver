@@ -84,6 +84,54 @@ def taboo_cells(warehouse):
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+class SokobanState():
+    """
+    Represents a Sokoban puzzle state.
+    Stores the worker position and box positions with their weights.
+    Boxes are stored as a sorted tuple of (x, y, weight) to ensure
+    consistent ordering for hashing and comparison.
+    """
+
+    def __init__(self, worker, boxes):
+        """
+        @param worker: (x, y) tuple of worker position
+        @param boxes: iterable of (x, y, weight) tuples
+        """
+        self.worker = worker
+        self.boxes = tuple(sorted(boxes))
+
+    @classmethod
+    def from_warehouse(cls, warehouse):
+        """Construct the initial state from a Warehouse object."""
+        worker = warehouse.worker
+        boxes = [(x, y, w) for (x, y), w in zip(warehouse.boxes, warehouse.weights)]
+        return cls(worker, boxes)
+
+    @property
+    def box_positions(self):
+        """Return just the (x, y) positions of all boxes."""
+        return set((x, y) for x, y, _ in self.boxes)
+
+    @property
+    def box_weights(self):
+        """Return a dict mapping (x, y) -> weight for all boxes."""
+        return {(x, y): w for x, y, w in self.boxes}
+
+    def __eq__(self, other):
+        return isinstance(other, SokobanState) and \
+               self.worker == other.worker and \
+               self.boxes == other.boxes
+
+    def __hash__(self):
+        return hash((self.worker, self.boxes))
+
+    def __lt__(self, other):
+        return (self.worker, self.boxes) < (other.worker, other.boxes)
+
+    def __repr__(self):
+        return f"SokobanState(worker={self.worker}, boxes={self.boxes})"
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 class SokobanPuzzle(search.Problem):
     '''
@@ -117,20 +165,11 @@ class SokobanPuzzle(search.Problem):
         # storing static data as sets for fast lookup
         self.walls = set(warehouse.walls)
         self.targets = set(warehouse.targets)
-        self.taboo_cells = set(warehouse.taboo_cells) ### Replace this with set(find_taboo_cells) or whatever when implemented
+        self.taboo_cells = set(taboo_cells) ### Replace this with set(find_taboo_cells) or whatever when implemented
 
-        # map box weights to their positions
-        self.box_weights = {
-            box: weight for box, weight in zip(warehouse.boxes, warehouse.weights)
-        }
+        initial = SokobanState.from_warehouse(warehouse)
 
-        # initial state
-        worker_pos = warehouse.worker
-        box_positions = tuple(sorted(warehouse.boxes))
-
-        initial_state = (worker_pos, tuple(sorted(box_positions)))
-
-        super().__init__(initial_state)
+        super().__init__(initial=initial)
 
     def actions(self, state):
         """Return the actions that can be executed in the given
@@ -138,10 +177,9 @@ class SokobanPuzzle(search.Problem):
         many actions, consider yielding them one at a time in an
         iterator, rather than building them all at once."""
         
-        # parse state into worker position and box positions
-        worker_pos, box_positions = state
-        box_positions = set(box_positions)
-        worker_x, worker_y = worker_pos
+        # copy state into worker position and box positions
+        worker_x, worker_y = state.worker
+        box_positions = state.box_positions
 
         valid_actions = []
         possibe_actions = ['Left', 'Right', 'Up', 'Down']
@@ -175,38 +213,28 @@ class SokobanPuzzle(search.Problem):
         """Return the state that results from executing the given
         action in the given state. The action must be one of
         self.actions(state)."""
+        worker_x, worker_y = state.worker
+        box_positions = state.box_positions
 
-        # parse state into worker position and box positions
-        worker_pos, box_positions = state
-        box_positions = set(box_positions)
-        worker_x, worker_y = worker_pos
-
-        # check if action is valid
-        if action not in self.actions(state):
-            return state
-        
-        # calculate new worker position
         dx, dy = actions[action]
-        new_worker_pos = (worker_x + dx, worker_y + dy)
+        new_worker = (worker_x + dx, worker_y + dy)
 
-        # check if worker is moving into a box, then push it
-        if new_worker_pos in box_positions:
-            new_box_pos = (new_worker_pos[0] + dx, new_worker_pos[1] + dy)
+        # build new boxes, moving the pushed box if any
+        new_boxes = set(state.boxes)
+        if new_worker in box_positions:
+            new_box_pos = (new_worker[0] + dx, new_worker[1] + dy)
+            # find and replace the pushed box entry (preserving its weight)
+            pushed = next(b for b in new_boxes if (b[0], b[1]) == new_worker)
+            new_boxes.remove(pushed)
+            new_boxes.add((new_box_pos[0], new_box_pos[1], pushed[2]))
 
-            # update box positions list
-            box_positions.remove(new_worker_pos)
-            box_positions.add(new_box_pos)
-        
-        # return new state
-        return (new_worker_pos, tuple(sorted(box_positions)))
-
+        return SokobanState(new_worker, new_boxes)
 
     def goal_test(self, state):
         """Return True if the state is a goal. The default method compares the
         state to self.goal, as specified in the constructor. Override this
         method if checking against a single self.goal is not enough."""
-        _, box_positions = state
-        return set(box_positions) == self.targets
+        return state.box_positions == self.targets
 
     def path_cost(self, c, state1, action, state2):
         """Return the cost of a solution path that arrives at state2 from
@@ -214,52 +242,33 @@ class SokobanPuzzle(search.Problem):
         is such that the path doesn't matter, this function will only look at
         state2.  If the path does matter, it will consider c and maybe state1
         and action. The default method costs 1 for every step in the path."""
-        _, box1 = state1
-        _, box2 = state2
-        
-        box1_state = set(box1)
-        box2_state = set(box2)
+        moved = state1.box_positions - state2.box_positions
 
-        # check if no box pushed
-        if box1_state == box2_state:
+        # no box pushed
+        if not moved:
             return c + 1
-        
-        # find the box that was pushed
-        origin = list(box1_state - box2_state)[0]
-        destination = list(box2_state - box1_state)[0]
 
-        weight = self.box_weights[origin]
-
-        # update weight mapping for new box position
-        self.box_weights[destination] = weight
-        del self.box_weights[origin]
+        origin = next(iter(moved))
+        weight = state1.box_weights[origin]
 
         return c + 1 + weight
-
-    def h(self, node):
-        _, box_positions = node.state
-
-        total = 0
-        
-        # calculate Manhattan distance to closest target
-        for box in box_positions:
-            # check if box is placed on target
-            if box in self.targets:
-                continue
-
-            distance = min(abs(box[0] - target[0]) + abs(box[1] - target[1]) for target in self.targets)
-            
-            # get box weight
-            weight = self.box_weights[box]
-    
-            total += distance * weight
-        
-        return total
 
     def value(self, state):
         """For optimization problems, each state has a value.  Hill-climbing
         and related algorithms try to maximize this value."""
-        return 0
+        total = 0
+
+        for pos in state.box_positions:
+            if pos in self.targets:
+                continue
+            distance = min(abs(pos[0] - t[0]) + abs(pos[1] - t[1]) for t in self.targets)
+            total -= distance * state.box_weights[pos]
+
+        return total
+
+    def h(self, node):
+        """Heuristic estimate of cost from node to goal, for use with A* search."""
+        return -self.value(node.state)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
