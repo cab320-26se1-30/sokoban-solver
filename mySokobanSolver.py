@@ -169,7 +169,7 @@ class SokobanPuzzle(search.Problem):
         # storing static data as sets for fast lookup
         self.walls = set(warehouse.walls)
         self.targets = set(warehouse.targets)
-        self.taboo_cells = set(taboo_cells) ### Replace this with set(find_taboo_cells) or whatever when implemented
+        self.taboo_cells = set() # TODO: Replace this with set(find_taboo_cells) or whatever when implemented
         
         self.possible_actions = {
             'Left': (-1, 0),
@@ -333,8 +333,21 @@ def solve_weighted_sokoban(warehouse):
 
     '''
     
-    raise NotImplementedError()
-
+    puzzle = SokobanPuzzle(warehouse)
+    
+    if puzzle.goal_test(puzzle.initial):
+        return [], 0
+    
+    solution = search.astar_graph_search(puzzle, puzzle.h)
+    
+    if solution is None:
+        return 'Impossible', None
+    
+    action_seq = solution.solution()
+    
+    cost = solution.path_cost
+    
+    return action_seq, cost
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
