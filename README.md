@@ -23,28 +23,22 @@
 ### Code flowchart
 
 ```mermaid
-flowchart LR
- subgraph SokobanPuzzle_Class["solve_weighted_sokoban — SokobanPuzzle & Init"]
-        Start(["solve_weighted_sokoban(warehouse)"])
-        InitPuzzle["Instantiate SokobanPuzzle<br>puzzle = SokobanPuzzle(warehouse)"]
-        note_init["IMPLEMENT: SokobanPuzzle.__init__()<br>store walls, targets, taboo cells, initial state"]
-        GoalTestInitial{"goal_test(puzzle.initial)<br>already solved?"}
-        note_goal_init["IMPLEMENT: SokobanPuzzle.goal_test()<br>box_positions == targets"]
-        ReturnEmpty["Return [], 0<br>Puzzle already solved"]
-  end
- subgraph Search_Algorithm["search.py — A* Graph Search"]
-        CallSearch["search.astar_graph_search(puzzle, puzzle.h)"]
-        note_h["puzzle.h(node) returns weighted Manhattan<br>distance sum to nearest targets"]
-        note_value["SokobanPuzzle.h calls -self.value(node.state)<br>IMPLEMENT: value() for heuristic"]
-        CheckSolution{"solution is None?"}
-  end
- subgraph Puzzle_Logic["Result Extraction & Return"]
-        ExtractSol["action_seq = solution.solution()"]
-        GetCost["cost = solution.path_cost"]
-        ReturnSuccess["Return action_seq, cost"]
-        ReturnImpossible["Return 'Impossible', None"]
-        SWS_End(["End"])
-  end
+flowchart TB
+    Start(["solve_weighted_sokoban(warehouse)"])
+    InitPuzzle["Instantiate SokobanPuzzle<br>puzzle = SokobanPuzzle(warehouse)"]
+    note_init["IMPLEMENT: SokobanPuzzle.__init__()<br>store walls, targets, taboo cells, initial state"]
+    GoalTestInitial{"goal_test(puzzle.initial)<br>already solved?"}
+    note_goal_init["IMPLEMENT: SokobanPuzzle.goal_test()<br>box_positions == targets"]
+    ReturnEmpty["Return [], 0<br>Puzzle already solved"]
+    CallSearch["search.astar_graph_search(puzzle, puzzle.h)"]
+    note_h["puzzle.h(node) returns weighted Manhattan<br>distance sum to nearest targets"]
+    note_value["SokobanPuzzle.h calls -self.value(node.state)<br>IMPLEMENT: value() for heuristic"]
+    CheckSolution{"solution is None?"}
+    ExtractSol["action_seq = solution.solution()"]
+    GetCost["cost = solution.path_cost"]
+    ReturnSuccess["Return action_seq, cost"]
+    ReturnImpossible["Return 'Impossible', None"]
+    SWS_End(["End"])
 
     Start --> InitPuzzle
     InitPuzzle -.-> note_init
@@ -63,21 +57,21 @@ flowchart LR
     GetCost --> ReturnSuccess
     ReturnSuccess --> SWS_End
 
-     InitPuzzle:::impl
-     note_init:::note
-     GoalTestInitial:::impl
-     note_goal_init:::note
-     CallSearch:::terminal
-     note_h:::note
-     note_value:::note
-     CheckSolution:::terminal
-     ExtractSol:::impl
-     GetCost:::impl
-     Start:::terminal
-     ReturnSuccess:::success
-     SWS_End:::terminal
-     ReturnImpossible:::fail
-     ReturnEmpty:::success
+    InitPuzzle:::impl
+    note_init:::note
+    GoalTestInitial:::impl
+    note_goal_init:::note
+    CallSearch:::terminal
+    note_h:::note
+    note_value:::note
+    CheckSolution:::terminal
+    ExtractSol:::impl
+    GetCost:::impl
+    Start:::terminal
+    ReturnSuccess:::success
+    SWS_End:::terminal
+    ReturnImpossible:::fail
+    ReturnEmpty:::success
 
     classDef terminal fill:#D3D1C7,stroke:#5F5E5A,color:#2C2C2A
     classDef note fill:#FAEEDA,stroke:#FAC775,color:#633806,font-size:11px
@@ -85,9 +79,6 @@ flowchart LR
     classDef success fill:#C0DD97,stroke:#639922,color:#173404
     classDef impl fill:#EEEDFE,stroke:#534AB7,color:#3C3489
     classDef optional fill:#FAECE7,stroke:#D85A30,color:#712B13
-    style Puzzle_Logic fill:#E1F5EE,stroke:#5DCAA5,color:#0F6E56
-    style SokobanPuzzle_Class fill:#EEEDFE,stroke:#AFA9EC,color:#3C3489
-    style Search_Algorithm fill:#E6F1FB,stroke:#85B7EB,color:#185FA5
 ```
 
 ```mermaid
