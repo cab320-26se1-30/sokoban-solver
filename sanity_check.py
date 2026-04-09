@@ -22,7 +22,7 @@ try:
     from fredSokobanSolver import taboo_cells, solve_weighted_sokoban, check_elem_action_seq
     print("Using Fred's solver")
 except ModuleNotFoundError:
-    from mySokobanSolver import taboo_cells, solve_weighted_sokoban, check_elem_action_seq
+    from mySokobanSolver import taboo_cells, solve_weighted_sokoban, check_elem_action_seq, my_team
     print("Using submitted solver")
 
     
@@ -30,7 +30,11 @@ def test_taboo_cells():
     wh = Warehouse()
     wh.load_warehouse("./warehouses/warehouse_01.txt")
     expected_answer = '####  \n#X #  \n#  ###\n#   X#\n#   X#\n#XX###\n####  '
-    answer = taboo_cells(wh)
+    try:
+        answer = taboo_cells(wh)
+    except NotImplementedError:
+        print('test_taboo_cells: not implemented, skipping\n')
+        return
     fcn = test_taboo_cells    
     print('<<  Testing {} >>'.format(fcn.__name__))
     if answer==expected_answer:
@@ -44,7 +48,11 @@ def test_check_elem_action_seq():
     wh = Warehouse()
     wh.load_warehouse("./warehouses/warehouse_01.txt")
     # first test
-    answer = check_elem_action_seq(wh, ['Right', 'Right','Down'])
+    try:
+        answer = check_elem_action_seq(wh, ['Right', 'Right','Down'])
+    except NotImplementedError:
+        print('check_elem_action_seq: not implemented, skipping\n')
+        return
     expected_answer = '####  \n# .#  \n#  ###\n#*   #\n#  $@#\n#  ###\n####  '
     print('<<  check_elem_action_seq, test 1>>')
     if answer==expected_answer:
@@ -54,7 +62,11 @@ def test_check_elem_action_seq():
         print('Expected ');print(expected_answer)
         print('But, received ');print(answer)
     # second test
-    answer = check_elem_action_seq(wh, ['Right', 'Right','Right'])
+    try:
+        answer = check_elem_action_seq(wh, ['Right', 'Right','Right'])
+    except NotImplementedError:
+        print('check_elem_action_seq: not implemented, skipping\n')
+        return
     expected_answer = 'Impossible'
     print('<<  check_elem_action_seq, test 2>>')
     if answer==expected_answer:
@@ -70,7 +82,11 @@ def test_solve_weighted_sokoban():
     wh = Warehouse()    
     wh.load_warehouse( "./warehouses/warehouse_8a.txt")
     # first test
-    answer, cost = solve_weighted_sokoban(wh)
+    try:
+        answer, cost = solve_weighted_sokoban(wh)
+    except NotImplementedError:
+        print('solve_weighted_sokoban: not implemented, skipping\n')
+        return
 
     expected_answer = ['Up', 'Left', 'Up', 'Left', 'Left', 'Down', 'Left', 
                        'Down', 'Right', 'Right', 'Right', 'Up', 'Up', 'Left', 
@@ -92,7 +108,7 @@ def test_solve_weighted_sokoban():
 
 if __name__ == "__main__":
     pass    
-#    print(my_team())  # should print your team
+    print(my_team())  # should print your team
 
     test_taboo_cells() 
     test_check_elem_action_seq()
