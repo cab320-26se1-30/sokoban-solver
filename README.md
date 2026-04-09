@@ -11,7 +11,7 @@
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Oliver   |     |
 
 
 - Read and understand `sokoban.py` — how `Warehouse` loads puzzles, what `walls`, `boxes`, `targets`, `worker`, `weights` contain
@@ -24,60 +24,54 @@
 
 ```mermaid
 flowchart TB
- subgraph SokobanPuzzle_Class["SokobanPuzzle Class & Init"]
-        Start(["solve_weighted_sokoban(warehouse)"])
-        InitPuzzle["Instantiate SokobanPuzzle<br>problem = SokobanPuzzle(warehouse)"]
-        note_init["IMPLEMENT: SokobanPuzzle.__init__() mySokobanPuzzle.py<br>store walls, targets, taboo"]
-        GoalTestInitial["goal_test(initial)<br>check if already solved?"]
-        note_goal_init["EXTEND and IMPLEMENT Problem.goal_test()<br>using SokobanPuzzle class"]
-        ReturnEmpty["Return [], 0<br>Puzzle already solved"]
-  end
- subgraph Search_Algorithm["search.py - A* Graph Search"]
-        CallSearch["Call search.astar_graph_search<br>problem, h"]
-        note_h["DEFINE: h(node) as -SokobanPuzzle.value(node.state)"]
-        note_value["EXTEND and IMPLEMENT Problem.value()<br>using SokobanPuzzle class"]
-        CheckSolution{"Solution Found?<br>solution_node is None?"}
-  end
- subgraph Puzzle_Logic["Result Extraction & Return"]
-        ExtractSol["Extract Action Sequence<br>solution_node.solution()"]
-        GetCost["Get Path Cost<br>solution_node.path_cost"]
-        ReturnSuccess["Return action_sequence, total_cost"]
-        ReturnImpossible["Return 'Impossible', None"]
-        End(["End"])
-  end
+    Start(["solve_weighted_sokoban(warehouse)"])
+    InitPuzzle["Instantiate SokobanPuzzle<br>puzzle = SokobanPuzzle(warehouse)"]
+    note_init["IMPLEMENT: SokobanPuzzle.__init__()<br>store walls, targets, taboo cells, initial state"]
+    GoalTestInitial{"goal_test(puzzle.initial)<br>already solved?"}
+    note_goal_init["IMPLEMENT: SokobanPuzzle.goal_test()<br>box_positions == targets"]
+    ReturnEmpty["Return [], 0<br>Puzzle already solved"]
+    CallSearch["search.astar_graph_search(puzzle, puzzle.h)"]
+    note_h["puzzle.h(node) returns weighted Manhattan<br>distance sum to nearest targets"]
+    note_value["SokobanPuzzle.h calls -self.value(node.state)<br>IMPLEMENT: value() for heuristic"]
+    CheckSolution{"solution is None?"}
+    ExtractSol["action_seq = solution.solution()"]
+    GetCost["cost = solution.path_cost"]
+    ReturnSuccess["Return action_seq, cost"]
+    ReturnImpossible["Return 'Impossible', None"]
+    SWS_End(["End"])
 
     Start --> InitPuzzle
     InitPuzzle -.-> note_init
     InitPuzzle --> GoalTestInitial
     GoalTestInitial -.-> note_goal_init
     GoalTestInitial -- Yes --> ReturnEmpty
-    ReturnEmpty --> End
+    ReturnEmpty --> SWS_End
     GoalTestInitial -- No --> CallSearch
     CallSearch -.-> note_h
     note_h -.-> note_value
     CallSearch --> CheckSolution
-    CheckSolution -- Yes (None) --> ReturnImpossible
-    ReturnImpossible --> End
-    CheckSolution -- No (Node) --> ExtractSol
+    CheckSolution -- Yes --> ReturnImpossible
+    ReturnImpossible --> SWS_End
+    CheckSolution -- No --> ExtractSol
     ExtractSol --> GetCost
     GetCost --> ReturnSuccess
-    ReturnSuccess --> End
+    ReturnSuccess --> SWS_End
 
-     InitPuzzle:::impl
-     note_init:::note
-     GoalTestInitial:::impl
-     note_goal_init:::note
-     CallSearch:::terminal
-     note_h:::note
-     note_value:::note
-     CheckSolution:::terminal
-     ExtractSol:::impl
-     GetCost:::impl
-     Start:::terminal
-     ReturnSuccess:::success
-     End:::terminal
-     ReturnImpossible:::fail
-     ReturnEmpty:::success
+    InitPuzzle:::impl
+    note_init:::note
+    GoalTestInitial:::impl
+    note_goal_init:::note
+    CallSearch:::terminal
+    note_h:::note
+    note_value:::note
+    CheckSolution:::terminal
+    ExtractSol:::impl
+    GetCost:::impl
+    Start:::terminal
+    ReturnSuccess:::success
+    SWS_End:::terminal
+    ReturnImpossible:::fail
+    ReturnEmpty:::success
 
     classDef terminal fill:#D3D1C7,stroke:#5F5E5A,color:#2C2C2A
     classDef note fill:#FAEEDA,stroke:#FAC775,color:#633806,font-size:11px
@@ -85,9 +79,52 @@ flowchart TB
     classDef success fill:#C0DD97,stroke:#639922,color:#173404
     classDef impl fill:#EEEDFE,stroke:#534AB7,color:#3C3489
     classDef optional fill:#FAECE7,stroke:#D85A30,color:#712B13
-    style Puzzle_Logic fill:#E1F5EE,stroke:#5DCAA5,color:#0F6E56
-    style SokobanPuzzle_Class fill:#EEEDFE,stroke:#AFA9EC,color:#3C3489
-    style Search_Algorithm fill:#E6F1FB,stroke:#85B7EB,color:#185FA5
+```
+
+```mermaid
+flowchart TB
+    CEA_Start(["check_elem_action_seq(warehouse, action_seq)"])
+    CEA_Init["puzzle = SokobanPuzzle(warehouse)<br>state = puzzle.initial"]
+    CEA_note_init["IMPLEMENT: SokobanPuzzle.__init__()<br>store walls, targets, taboo cells, initial state"]
+    CEA_MoreActions{"More actions<br>in action_seq?"}
+    CEA_ValidCheck{"action in puzzle.actions(state,<br>ignore_taboo_cells=True)?"}
+    CEA_note_actions["IMPLEMENT: SokobanPuzzle.actions()<br>check wall collisions, box pushes;<br>ignore taboo cells when called here"]
+    CEA_Apply["state = puzzle.result(state, action)"]
+    CEA_note_result["IMPLEMENT: SokobanPuzzle.result()<br>move worker, shift pushed box,<br>return new SokobanState"]
+    CEA_Impossible["Return 'Impossible'"]
+    CEA_ReturnStr["Return state.to_warehouse().__str__()"]
+    CEA_End(["End"])
+
+    CEA_Start --> CEA_Init
+    CEA_Init -.-> CEA_note_init
+    CEA_Init --> CEA_MoreActions
+    CEA_MoreActions -- Yes --> CEA_ValidCheck
+    CEA_ValidCheck -.-> CEA_note_actions
+    CEA_ValidCheck -- No --> CEA_Impossible
+    CEA_Impossible --> CEA_End
+    CEA_ValidCheck -- Yes --> CEA_Apply
+    CEA_Apply -.-> CEA_note_result
+    CEA_Apply --> CEA_MoreActions
+    CEA_MoreActions -- No --> CEA_ReturnStr
+    CEA_ReturnStr --> CEA_End
+
+    CEA_Start:::terminal
+    CEA_Init:::impl
+    CEA_note_init:::note
+    CEA_MoreActions:::terminal
+    CEA_ValidCheck:::impl
+    CEA_note_actions:::note
+    CEA_Apply:::impl
+    CEA_note_result:::note
+    CEA_Impossible:::fail
+    CEA_ReturnStr:::success
+    CEA_End:::terminal
+
+    classDef terminal fill:#D3D1C7,stroke:#5F5E5A,color:#2C2C2A
+    classDef note fill:#FAEEDA,stroke:#FAC775,color:#633806,font-size:11px
+    classDef fail fill:#F7C1C1,stroke:#E24B4A,color:#501313
+    classDef success fill:#C0DD97,stroke:#639922,color:#173404
+    classDef impl fill:#EEEDFE,stroke:#534AB7,color:#3C3489
 ```
 
 ---
@@ -97,7 +134,7 @@ flowchart TB
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Stephen   |     |
 
 
 - Write logic to detect which cells are **inside** the warehouse (flood-fill from outside, or scan from walls inward)
@@ -114,7 +151,7 @@ flowchart TB
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Oliver   |     |
 
 
 - Map action strings (`'Up'`, `'Down'`, `'Left'`, `'Right'`) to `(dx, dy)` deltas
@@ -135,7 +172,7 @@ flowchart TB
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Hieu   |     |
 
 
 - Store static data: `walls`, `targets`, `weights`, `taboo` cells as sets for fast lookup
@@ -147,7 +184,7 @@ flowchart TB
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Hieu   |     |
 
 
 - Parse state into `worker_pos` and `box_positions`
@@ -161,7 +198,7 @@ flowchart TB
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Hieu   |     |
 
 
 - Apply the action: compute new worker position
@@ -173,7 +210,7 @@ flowchart TB
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Hieu   |     |
 
 
 - Return `True` if the set of box positions equals the set of target positions
@@ -183,7 +220,7 @@ flowchart TB
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Hieu   |     |
 
 
 - Detect if a box was pushed (compare box tuples of `state1` vs `state2`)
@@ -196,7 +233,7 @@ flowchart TB
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Hieu   |     |
 
 
 - For each unplaced box, find the Manhattan distance to its nearest target
@@ -205,6 +242,10 @@ flowchart TB
 - Verify it is **admissible** (never overestimates the true cost)
 
 ### `value(self, state)`
+
+| Owner |     |
+| ----- | --- |
+| Hieu   |     |
 
 - Can simply `raise NotImplementedError` or `return 0` — not used by A*
 
@@ -215,7 +256,7 @@ flowchart TB
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Oliver   |     |
 
 
 - Call `taboo_cells(warehouse)` and parse the result into a set of taboo `(x, y)` positions
@@ -288,16 +329,16 @@ flowchart TB
 
 | Phase | Task                          | Owner            | Status |
 | ----- | ----------------------------- | ---------------- | ------ |
-| 1     | Setup & Understanding         |                  |        |
-| 2     | `taboo_cells()`               |                  |        |
-| 3     | `check_elem_action_seq()`     |                  |        |
-| 4a    | `SokobanPuzzle.__init`__      |                  |        |
-| 4b    | `SokobanPuzzle.actions`       |                  |        |
-| 4c    | `SokobanPuzzle.result`        |                  |        |
-| 4d    | `SokobanPuzzle.goal_test`     |                  |        |
-| 4e    | `SokobanPuzzle.path_cost`     |                  |        |
-| 4f    | `SokobanPuzzle.h` (heuristic) |                  |        |
-| 5     | `solve_weighted_sokoban()`    |                  |        |
+| 1     | Setup & Understanding         | Oliver           | Done   |
+| 2     | `taboo_cells()`               | Stephen          |        |
+| 3     | `check_elem_action_seq()`     | Hieu             | Done   |
+| 4a    | `SokobanPuzzle.__init`__      | Hieu             | Done   |
+| 4b    | `SokobanPuzzle.actions`       | Hieu             | Done   |
+| 4c    | `SokobanPuzzle.result`        | Hieu             | Done   |
+| 4d    | `SokobanPuzzle.goal_test`     | Hieu             | Done   |
+| 4e    | `SokobanPuzzle.path_cost`     | Hieu             | Done   |
+| 4f    | `SokobanPuzzle.h` (heuristic) | Hieu             | Done   |
+| 5     | `solve_weighted_sokoban()`    | Oliver           | Done   |
 | 6     | Testing & Validation          | All              |        |
 | 7     | Report                        | All (individual) |        |
 | 8     | Submission                    | All (individual) |        |
