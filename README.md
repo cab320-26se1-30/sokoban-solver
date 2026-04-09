@@ -11,7 +11,7 @@
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Oliver   |     |
 
 
 - Read and understand `sokoban.py` — how `Warehouse` loads puzzles, what `walls`, `boxes`, `targets`, `worker`, `weights` contain
@@ -134,7 +134,7 @@ flowchart TB
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Stephen   |     |
 
 
 - Write logic to detect which cells are **inside** the warehouse (flood-fill from outside, or scan from walls inward)
@@ -151,7 +151,7 @@ flowchart TB
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Oliver   |     |
 
 
 - Map action strings (`'Up'`, `'Down'`, `'Left'`, `'Right'`) to `(dx, dy)` deltas
@@ -172,7 +172,7 @@ flowchart TB
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Hieu   |     |
 
 
 - Store static data: `walls`, `targets`, `weights`, `taboo` cells as sets for fast lookup
@@ -184,7 +184,7 @@ flowchart TB
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Hieu   |     |
 
 
 - Parse state into `worker_pos` and `box_positions`
@@ -198,7 +198,7 @@ flowchart TB
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Hieu   |     |
 
 
 - Apply the action: compute new worker position
@@ -210,7 +210,7 @@ flowchart TB
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Hieu   |     |
 
 
 - Return `True` if the set of box positions equals the set of target positions
@@ -220,7 +220,7 @@ flowchart TB
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Hieu   |     |
 
 
 - Detect if a box was pushed (compare box tuples of `state1` vs `state2`)
@@ -233,7 +233,7 @@ flowchart TB
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Hieu   |     |
 
 
 - For each unplaced box, find the Manhattan distance to its nearest target
@@ -242,6 +242,10 @@ flowchart TB
 - Verify it is **admissible** (never overestimates the true cost)
 
 ### `value(self, state)`
+
+| Owner |     |
+| ----- | --- |
+| Hieu   |     |
 
 - Can simply `raise NotImplementedError` or `return 0` — not used by A*
 
@@ -252,7 +256,7 @@ flowchart TB
 
 | Owner |     |
 | ----- | --- |
-| ___   |     |
+| Oliver   |     |
 
 
 - Call `taboo_cells(warehouse)` and parse the result into a set of taboo `(x, y)` positions
@@ -325,16 +329,16 @@ flowchart TB
 
 | Phase | Task                          | Owner            | Status |
 | ----- | ----------------------------- | ---------------- | ------ |
-| 1     | Setup & Understanding         |                  |        |
-| 2     | `taboo_cells()`               |                  |        |
-| 3     | `check_elem_action_seq()`     |                  |        |
-| 4a    | `SokobanPuzzle.__init`__      |                  |        |
-| 4b    | `SokobanPuzzle.actions`       |                  |        |
-| 4c    | `SokobanPuzzle.result`        |                  |        |
-| 4d    | `SokobanPuzzle.goal_test`     |                  |        |
-| 4e    | `SokobanPuzzle.path_cost`     |                  |        |
-| 4f    | `SokobanPuzzle.h` (heuristic) |                  |        |
-| 5     | `solve_weighted_sokoban()`    |                  |        |
+| 1     | Setup & Understanding         | Oliver           | Done   |
+| 2     | `taboo_cells()`               | Stephen          |        |
+| 3     | `check_elem_action_seq()`     | Hieu             | Done   |
+| 4a    | `SokobanPuzzle.__init`__      | Hieu             | Done   |
+| 4b    | `SokobanPuzzle.actions`       | Hieu             | Done   |
+| 4c    | `SokobanPuzzle.result`        | Hieu             | Done   |
+| 4d    | `SokobanPuzzle.goal_test`     | Hieu             | Done   |
+| 4e    | `SokobanPuzzle.path_cost`     | Hieu             | Done   |
+| 4f    | `SokobanPuzzle.h` (heuristic) | Hieu             | Done   |
+| 5     | `solve_weighted_sokoban()`    | Oliver           | Done   |
 | 6     | Testing & Validation          | All              |        |
 | 7     | Report                        | All (individual) |        |
 | 8     | Submission                    | All (individual) |        |
