@@ -46,179 +46,114 @@ def my_team():
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+class TabooHelper:
+    _DIRS = {'left': (-1,0), 'right': (1,0), 'up': (0,-1), 'down': (0,1)}
+
+    def __init__(self, warehouse):
+        self.walls = set(warehouse.walls)
+        self.targets = set(warehouse.targets)
+        self.worker = warehouse.worker
+        self.max_x, self.max_y = (max(coords) for coords in zip(*self.walls))
+
+    def is_target(self, pos):
+        return pos in self.targets
+
+    def has_wall(self, pos, direction):
+        dx, dy = self._DIRS[direction]
+        return (pos[0]+dx, pos[1]+dy) in self.walls
+
+    def neighbours(self, pos):
+        x, y = pos
+        for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
+            yield (x+dx, y+dy)
+
+    def is_corner(self, pos):
+        if self.is_target(pos):
+            return False
+        return (
+            (self.has_wall(pos, 'left') or self.has_wall(pos, 'right')) and
+            (self.has_wall(pos, 'up') or self.has_wall(pos, 'down'))
+        )
+
+    def flood_fill(self, seeds, is_passable):
+        visited = set()
+        frontier = list(seeds)
+        while frontier:
+            current = frontier.pop()
+            if current in visited or not is_passable(current):
+                continue
+            visited.add(current)
+            frontier.extend(self.neighbours(current))
+        return visited
+
+    def mark_taboo_line(self, line_positions, make_pos, wall_side, taboo):
+        def flush(segment):
+            if len(segment) < 2:
+                return []
+            corners = [c for c in segment if make_pos(c) in taboo and self.has_wall(make_pos(c), wall_side)]
+            return [
+                make_pos(c)
+                for start, end in zip(corners, corners[1:])
+                if not any(self.is_target(make_pos(c)) for c in range(start + 1, end))
+                for c in range(start, end + 1)
+            ]
+        result, segment = [], []
+        for coord in line_positions:
+            if segment and coord != segment[-1] + 1:
+                result += flush(segment)
+                segment = []
+            segment.append(coord)
+        return result + flush(segment)
+
+    def compute(self):
+        if not self.walls:
+            return set()
+        inside = self.flood_fill(
+            [self.worker],
+            lambda pos: pos not in self.walls and 0 <= pos[0] <= self.max_x and 0 <= pos[1] <= self.max_y
+        )
+        taboo = set(filter(self.is_corner, inside))
+        for y in range(self.max_y + 1):
+            row_cells = [x for x in range(self.max_x + 1) if (x, y) in inside and not self.is_target((x, y))]
+            for side in ('up', 'down'):
+                taboo.update(self.mark_taboo_line([x for x in row_cells if self.has_wall((x, y), side)], lambda x, y=y: (x, y), side, taboo))
+        for x in range(self.max_x + 1):
+            col_cells = [y for y in range(self.max_y + 1) if (x, y) in inside and not self.is_target((x, y))]
+            for side in ('left', 'right'):
+                taboo.update(self.mark_taboo_line([y for y in col_cells if self.has_wall((x, y), side)], lambda y, x=x: (x, y), side, taboo))
+        return taboo
+
 def taboo_cells(warehouse):
-    '''  
+    '''
     Identify the taboo cells of a warehouse. A "taboo cell" is by definition
-    a cell inside a warehouse such that whenever a box get pushed on such 
-    a cell then the puzzle becomes unsolvable. 
-    
+    a cell inside a warehouse such that whenever a box get pushed on such
+    a cell then the puzzle becomes unsolvable.
+
     Cells outside the warehouse are not taboo. It is a fail to tag one as taboo.
-    
-    When determining the taboo cells, you must ignore all the existing boxes, 
-    only consider the walls and the target  cells.  
+
+    When determining the taboo cells, you must ignore all the existing boxes,
+    only consider the walls and the target  cells.
     Use only the following rules to determine the taboo cells;
      Rule 1: if a cell is a corner and not a target, then it is a taboo cell.
-     Rule 2: all the cells between two corners along a wall are taboo if none of 
+     Rule 2: all the cells between two corners along a wall are taboo if none of
              these cells is a target.
-    
-    @param warehouse: 
+
+    @param warehouse:
         a Warehouse object with a worker inside the warehouse
 
     @return
-       A string representing the warehouse with only the wall cells marked with 
-       a '#' and the taboo cells marked with a 'X'.  
+       A string representing the warehouse with only the wall cells marked with
+       a '#' and the taboo cells marked with a 'X'.
        The returned string should NOT have marks for the worker, the targets,
-       and the boxes.  
+       and the boxes.
     '''
-    walls = set(warehouse.walls)
-    targets = set(warehouse.targets)
-
-    if not walls:
-        return ''
-
-    max_x = max(x for x, _ in walls)
-    max_y = max(y for _, y in walls)
-
-    def in_bounds(pos):
-        x, y = pos
-        return 0 <= x <= max_x and 0 <= y <= max_y
-
-    def is_wall(pos):
-        return pos in walls
-
-    def is_target(pos):
-        return pos in targets
-
-    def neighbours(pos):
-        x, y = pos
-        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-            yield (x + dx, y + dy)
-
-    open_cells = {(x, y) for x in range(max_x + 1) for y in range(max_y + 1) if (x, y) not in walls}
-
-    # Determine outside cells by flood-filling from the bounding box edges.
-    outside = set()
-    frontier = [pos for x in range(max_x + 1) for y in (0, max_y) if (pos := (x, y)) in open_cells]
-    frontier += [pos for y in range(max_y + 1) for x in (0, max_x) if (pos := (x, y)) in open_cells]
-    while frontier:
-        current = frontier.pop()
-        if current in outside:
-            continue
-        outside.add(current)
-        for neighbour in neighbours(current):
-            if neighbour in open_cells and neighbour not in outside:
-                frontier.append(neighbour)
-
-    inside = open_cells - outside
-
-    def has_wall(pos, direction):
-        x, y = pos
-        if direction == 'left':
-            return (x - 1, y) in walls
-        if direction == 'right':
-            return (x + 1, y) in walls
-        if direction == 'up':
-            return (x, y - 1) in walls
-        if direction == 'down':
-            return (x, y + 1) in walls
-        return False
-
-    taboo = set()
-
-    def is_corner(pos):
-        if is_target(pos):
-            return False
-        return (
-            (has_wall(pos, 'left') and has_wall(pos, 'up')) or
-            (has_wall(pos, 'left') and has_wall(pos, 'down')) or
-            (has_wall(pos, 'right') and has_wall(pos, 'up')) or
-            (has_wall(pos, 'right') and has_wall(pos, 'down'))
-        )
-
-    for pos in inside:
-        if is_corner(pos):
-            taboo.add(pos)
-
-    def extend_taboo_line(line_positions, line_index, is_target_func, side_check):
-        # line_positions is a sorted list of coordinates (x or y) on a row/column
-        if not line_positions:
-            return
-        segment = []
-        for coord in line_positions:
-            if segment and coord != segment[-1] + 1:
-                # process the previous contiguous segment
-                add_taboo_for_segment(segment, line_index, side_check)
-                segment = []
-            segment.append(coord)
-        if segment:
-            add_taboo_for_segment(segment, line_index, side_check)
-
-    def add_taboo_for_segment(coords, fixed_index, side_check):
-        corner_coords = [coord for coord in coords if side_check((coord, fixed_index) if isinstance(coords[0], int) else (fixed_index, coord))]
-        for start, end in zip(corner_coords, corner_coords[1:]):
-            for coord in range(start, end + 1):
-                pos = (coord, fixed_index) if isinstance(coords[0], int) else (fixed_index, coord)
-                taboo.add(pos)
-
-    # Horizontal rule: scan rows for taboo corners with walls above or below.
-    for y in range(max_y + 1):
-        row_cells = [x for x in range(max_x + 1) if (x, y) in inside and not is_target((x, y))]
-        for side in ('up', 'down'):
-            line_positions = [x for x in row_cells if has_wall((x, y), side)]
-            if not line_positions:
-                continue
-            segment = []
-            for x in line_positions:
-                if segment and x != segment[-1] + 1:
-                    if len(segment) >= 2:
-                        corner_coords = [xx for xx in segment if (xx, y) in taboo and has_wall((xx, y), side)]
-                        for start, end in zip(corner_coords, corner_coords[1:]):
-                            for xx in range(start, end + 1):
-                                taboo.add((xx, y))
-                    segment = []
-                segment.append(x)
-            if len(segment) >= 2:
-                corner_coords = [xx for xx in segment if (xx, y) in taboo and has_wall((xx, y), side)]
-                for start, end in zip(corner_coords, corner_coords[1:]):
-                    for xx in range(start, end + 1):
-                        taboo.add((xx, y))
-
-    # Vertical rule: scan columns for taboo corners with walls left or right.
-    for x in range(max_x + 1):
-        col_cells = [y for y in range(max_y + 1) if (x, y) in inside and not is_target((x, y))]
-        for side in ('left', 'right'):
-            line_positions = [y for y in col_cells if has_wall((x, y), side)]
-            if not line_positions:
-                continue
-            segment = []
-            for y in line_positions:
-                if segment and y != segment[-1] + 1:
-                    if len(segment) >= 2:
-                        corner_coords = [yy for yy in segment if (x, yy) in taboo and has_wall((x, yy), side)]
-                        for start, end in zip(corner_coords, corner_coords[1:]):
-                            for yy in range(start, end + 1):
-                                taboo.add((x, yy))
-                    segment = []
-                segment.append(y)
-            if len(segment) >= 2:
-                corner_coords = [yy for yy in segment if (x, yy) in taboo and has_wall((x, yy), side)]
-                for start, end in zip(corner_coords, corner_coords[1:]):
-                    for yy in range(start, end + 1):
-                        taboo.add((x, yy))
-
-    # Build the result string.
-    rows = []
-    for y in range(max_y + 1):
-        row = []
-        for x in range(max_x + 1):
-            if (x, y) in walls:
-                row.append('#')
-            elif (x, y) in taboo:
-                row.append('X')
-            else:
-                row.append(' ')
-        rows.append(''.join(row))
-    return '\n'.join(rows)
+    taboo = TabooHelper(warehouse).compute()
+    walls = warehouse.walls
+    max_x, max_y = (max(coords) for coords in zip(*walls))
+    return '\n'.join(
+        ''.join('#' if (x, y) in walls else 'X' if (x, y) in taboo else ' ' for x in range(max_x + 1))
+        for y in range(max_y + 1)
+    )
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -316,7 +251,7 @@ class SokobanPuzzle(search.Problem):
         # storing static data as sets for fast lookup
         self.walls = set(warehouse.walls)
         self.targets = set(warehouse.targets)
-        self.taboo_cells = set() # TODO: Replace this with set(find_taboo_cells) or whatever when implemented
+        self.taboo_cells = TabooHelper(warehouse).compute()
         
         self.possible_actions = {
             'Left': (-1, 0),
