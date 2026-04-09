@@ -79,16 +79,27 @@ flowchart LR
      ReturnImpossible:::fail
      ReturnEmpty:::success
 
- subgraph CheckElemActionSeq["check_elem_action_seq(warehouse, action_seq)"]
-        CEA_Start(["check_elem_action_seq(warehouse, action_seq)"])
-        CEA_Init["puzzle = SokobanPuzzle(warehouse)<br>state = puzzle.initial"]
-        CEA_MoreActions{"More actions\nin action_seq?"}
-        CEA_ValidCheck{"action in puzzle.actions(state,\nignore_taboo_cells=True)?"}
-        CEA_Apply["state = puzzle.result(state, action)"]
-        CEA_Impossible["Return 'Impossible'"]
-        CEA_ReturnStr["Return state.to_warehouse().__str__()"]
-        CEA_End(["End"])
-  end
+    classDef terminal fill:#D3D1C7,stroke:#5F5E5A,color:#2C2C2A
+    classDef note fill:#FAEEDA,stroke:#FAC775,color:#633806,font-size:11px
+    classDef fail fill:#F7C1C1,stroke:#E24B4A,color:#501313
+    classDef success fill:#C0DD97,stroke:#639922,color:#173404
+    classDef impl fill:#EEEDFE,stroke:#534AB7,color:#3C3489
+    classDef optional fill:#FAECE7,stroke:#D85A30,color:#712B13
+    style Puzzle_Logic fill:#E1F5EE,stroke:#5DCAA5,color:#0F6E56
+    style SokobanPuzzle_Class fill:#EEEDFE,stroke:#AFA9EC,color:#3C3489
+    style Search_Algorithm fill:#E6F1FB,stroke:#85B7EB,color:#185FA5
+```
+
+```mermaid
+flowchart TB
+    CEA_Start(["check_elem_action_seq(warehouse, action_seq)"])
+    CEA_Init["puzzle = SokobanPuzzle(warehouse)<br>state = puzzle.initial"]
+    CEA_MoreActions{"More actions<br>in action_seq?"}
+    CEA_ValidCheck{"action in puzzle.actions(state,<br>ignore_taboo_cells=True)?"}
+    CEA_Apply["state = puzzle.result(state, action)"]
+    CEA_Impossible["Return 'Impossible'"]
+    CEA_ReturnStr["Return state.to_warehouse().__str__()"]
+    CEA_End(["End"])
 
     CEA_Start --> CEA_Init
     CEA_Init --> CEA_MoreActions
@@ -100,25 +111,19 @@ flowchart LR
     CEA_MoreActions -- No --> CEA_ReturnStr
     CEA_ReturnStr --> CEA_End
 
-     CEA_Start:::terminal
-     CEA_Init:::impl
-     CEA_MoreActions:::terminal
-     CEA_ValidCheck:::terminal
-     CEA_Apply:::impl
-     CEA_Impossible:::fail
-     CEA_ReturnStr:::success
-     CEA_End:::terminal
+    CEA_Start:::terminal
+    CEA_Init:::impl
+    CEA_MoreActions:::terminal
+    CEA_ValidCheck:::terminal
+    CEA_Apply:::impl
+    CEA_Impossible:::fail
+    CEA_ReturnStr:::success
+    CEA_End:::terminal
 
     classDef terminal fill:#D3D1C7,stroke:#5F5E5A,color:#2C2C2A
-    classDef note fill:#FAEEDA,stroke:#FAC775,color:#633806,font-size:11px
     classDef fail fill:#F7C1C1,stroke:#E24B4A,color:#501313
     classDef success fill:#C0DD97,stroke:#639922,color:#173404
     classDef impl fill:#EEEDFE,stroke:#534AB7,color:#3C3489
-    classDef optional fill:#FAECE7,stroke:#D85A30,color:#712B13
-    style Puzzle_Logic fill:#E1F5EE,stroke:#5DCAA5,color:#0F6E56
-    style SokobanPuzzle_Class fill:#EEEDFE,stroke:#AFA9EC,color:#3C3489
-    style Search_Algorithm fill:#E6F1FB,stroke:#85B7EB,color:#185FA5
-    style CheckElemActionSeq fill:#FEF3E2,stroke:#F0A500,color:#7A4E00
 ```
 
 ---
