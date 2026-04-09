@@ -46,15 +46,6 @@ def my_team():
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-### Dictionary of possible actions
-actions = {
-    'Left': (-1, 0),
-    'Right': (1, 0),
-    'Up': (0, -1),
-    'Down': (0, 1)
-}
-
-
 def taboo_cells(warehouse):
     '''  
     Identify the taboo cells of a warehouse. A "taboo cell" is by definition
@@ -92,21 +83,34 @@ class SokobanState():
     consistent ordering for hashing and comparison.
     """
 
-    def __init__(self, worker, boxes):
+    def __init__(self, worker, boxes, warehouse=None):
         """
         @param worker: (x, y) tuple of worker position
         @param boxes: iterable of (x, y, weight) tuples
         """
         self.worker = worker
         self.boxes = tuple(sorted(boxes))
+        self.initial_warehouse = warehouse
 
     @classmethod
     def from_warehouse(cls, warehouse):
         """Construct the initial state from a Warehouse object."""
         worker = warehouse.worker
         boxes = [(x, y, w) for (x, y), w in zip(warehouse.boxes, warehouse.weights)]
-        return cls(worker, boxes)
+        return cls(worker, boxes, warehouse)
 
+    def to_warehouse(self, initial_warehouse=None):
+        warehouse = self.initial_warehouse if initial_warehouse is None else initial_warehouse
+        
+        if warehouse is None:
+            raise ValueError("initial_warehouse is required if SokobanState isn't initialised with a warehouse")
+        
+        return warehouse.copy(
+            worker=self.worker,
+            boxes=tuple((x, y) for x, y, _ in self.boxes),
+            weights=tuple(w for _, _, w in self.boxes)
+        )
+    
     @property
     def box_positions(self):
         """Return just the (x, y) positions of all boxes."""
@@ -166,6 +170,13 @@ class SokobanPuzzle(search.Problem):
         self.walls = set(warehouse.walls)
         self.targets = set(warehouse.targets)
         self.taboo_cells = set(taboo_cells) ### Replace this with set(find_taboo_cells) or whatever when implemented
+        
+        self.possible_actions = {
+            'Left': (-1, 0),
+            'Right': (1, 0),
+            'Up': (0, -1),
+            'Down': (0, 1)
+        }
 
         initial = SokobanState.from_warehouse(warehouse)
 
@@ -182,11 +193,9 @@ class SokobanPuzzle(search.Problem):
         box_positions = state.box_positions
 
         valid_actions = []
-        possibe_actions = ['Left', 'Right', 'Up', 'Down']
 
-        for action in possibe_actions:
+        for action, (dx, dy) in self.possible_actions.items():
             # calculate new worker position
-            dx, dy = actions[action]
             new_worker_pos = (worker_x + dx, worker_y + dy)
 
             # check if worker is moving to an empty cell
@@ -216,7 +225,7 @@ class SokobanPuzzle(search.Problem):
         worker_x, worker_y = state.worker
         box_positions = state.box_positions
 
-        dx, dy = actions[action]
+        dx, dy = self.possible_actions[action]
         new_worker = (worker_x + dx, worker_y + dy)
 
         # build new boxes, moving the pushed box if any
@@ -296,11 +305,16 @@ def check_elem_action_seq(warehouse, action_seq):
                string returned by the method  Warehouse.__str__()
     '''
     
-    ##         "INSERT YOUR CODE HERE"
+    puzzle = SokobanPuzzle(warehouse=warehouse)
+    state = puzzle.initial
     
-    raise NotImplementedError()
+    for action in action_seq:
+        if not action in puzzle.actions(state):
+            return 'Impossible'
+        state = puzzle.result(state, action)
 
-
+    return state.to_warehouse().__str__()
+    
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 def solve_weighted_sokoban(warehouse):
