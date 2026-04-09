@@ -70,8 +70,155 @@ def taboo_cells(warehouse):
        The returned string should NOT have marks for the worker, the targets,
        and the boxes.  
     '''
-    ##         "INSERT YOUR CODE HERE"    
-    raise NotImplementedError()
+    walls = set(warehouse.walls)
+    targets = set(warehouse.targets)
+
+    if not walls:
+        return ''
+
+    max_x = max(x for x, _ in walls)
+    max_y = max(y for _, y in walls)
+
+    def in_bounds(pos):
+        x, y = pos
+        return 0 <= x <= max_x and 0 <= y <= max_y
+
+    def is_wall(pos):
+        return pos in walls
+
+    def is_target(pos):
+        return pos in targets
+
+    def neighbours(pos):
+        x, y = pos
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            yield (x + dx, y + dy)
+
+    open_cells = {(x, y) for x in range(max_x + 1) for y in range(max_y + 1) if (x, y) not in walls}
+
+    # Determine outside cells by flood-filling from the bounding box edges.
+    outside = set()
+    frontier = [pos for x in range(max_x + 1) for y in (0, max_y) if (pos := (x, y)) in open_cells]
+    frontier += [pos for y in range(max_y + 1) for x in (0, max_x) if (pos := (x, y)) in open_cells]
+    while frontier:
+        current = frontier.pop()
+        if current in outside:
+            continue
+        outside.add(current)
+        for neighbour in neighbours(current):
+            if neighbour in open_cells and neighbour not in outside:
+                frontier.append(neighbour)
+
+    inside = open_cells - outside
+
+    def has_wall(pos, direction):
+        x, y = pos
+        if direction == 'left':
+            return (x - 1, y) in walls
+        if direction == 'right':
+            return (x + 1, y) in walls
+        if direction == 'up':
+            return (x, y - 1) in walls
+        if direction == 'down':
+            return (x, y + 1) in walls
+        return False
+
+    taboo = set()
+
+    def is_corner(pos):
+        if is_target(pos):
+            return False
+        return (
+            (has_wall(pos, 'left') and has_wall(pos, 'up')) or
+            (has_wall(pos, 'left') and has_wall(pos, 'down')) or
+            (has_wall(pos, 'right') and has_wall(pos, 'up')) or
+            (has_wall(pos, 'right') and has_wall(pos, 'down'))
+        )
+
+    for pos in inside:
+        if is_corner(pos):
+            taboo.add(pos)
+
+    def extend_taboo_line(line_positions, line_index, is_target_func, side_check):
+        # line_positions is a sorted list of coordinates (x or y) on a row/column
+        if not line_positions:
+            return
+        segment = []
+        for coord in line_positions:
+            if segment and coord != segment[-1] + 1:
+                # process the previous contiguous segment
+                add_taboo_for_segment(segment, line_index, side_check)
+                segment = []
+            segment.append(coord)
+        if segment:
+            add_taboo_for_segment(segment, line_index, side_check)
+
+    def add_taboo_for_segment(coords, fixed_index, side_check):
+        corner_coords = [coord for coord in coords if side_check((coord, fixed_index) if isinstance(coords[0], int) else (fixed_index, coord))]
+        for start, end in zip(corner_coords, corner_coords[1:]):
+            for coord in range(start, end + 1):
+                pos = (coord, fixed_index) if isinstance(coords[0], int) else (fixed_index, coord)
+                taboo.add(pos)
+
+    # Horizontal rule: scan rows for taboo corners with walls above or below.
+    for y in range(max_y + 1):
+        row_cells = [x for x in range(max_x + 1) if (x, y) in inside and not is_target((x, y))]
+        for side in ('up', 'down'):
+            line_positions = [x for x in row_cells if has_wall((x, y), side)]
+            if not line_positions:
+                continue
+            segment = []
+            for x in line_positions:
+                if segment and x != segment[-1] + 1:
+                    if len(segment) >= 2:
+                        corner_coords = [xx for xx in segment if (xx, y) in taboo and has_wall((xx, y), side)]
+                        for start, end in zip(corner_coords, corner_coords[1:]):
+                            for xx in range(start, end + 1):
+                                taboo.add((xx, y))
+                    segment = []
+                segment.append(x)
+            if len(segment) >= 2:
+                corner_coords = [xx for xx in segment if (xx, y) in taboo and has_wall((xx, y), side)]
+                for start, end in zip(corner_coords, corner_coords[1:]):
+                    for xx in range(start, end + 1):
+                        taboo.add((xx, y))
+
+    # Vertical rule: scan columns for taboo corners with walls left or right.
+    for x in range(max_x + 1):
+        col_cells = [y for y in range(max_y + 1) if (x, y) in inside and not is_target((x, y))]
+        for side in ('left', 'right'):
+            line_positions = [y for y in col_cells if has_wall((x, y), side)]
+            if not line_positions:
+                continue
+            segment = []
+            for y in line_positions:
+                if segment and y != segment[-1] + 1:
+                    if len(segment) >= 2:
+                        corner_coords = [yy for yy in segment if (x, yy) in taboo and has_wall((x, yy), side)]
+                        for start, end in zip(corner_coords, corner_coords[1:]):
+                            for yy in range(start, end + 1):
+                                taboo.add((x, yy))
+                    segment = []
+                segment.append(y)
+            if len(segment) >= 2:
+                corner_coords = [yy for yy in segment if (x, yy) in taboo and has_wall((x, yy), side)]
+                for start, end in zip(corner_coords, corner_coords[1:]):
+                    for yy in range(start, end + 1):
+                        taboo.add((x, yy))
+
+    # Build the result string.
+    rows = []
+    for y in range(max_y + 1):
+        row = []
+        for x in range(max_x + 1):
+            if (x, y) in walls:
+                row.append('#')
+            elif (x, y) in taboo:
+                row.append('X')
+            else:
+                row.append(' ')
+        rows.append(''.join(row))
+    return '\n'.join(rows)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
