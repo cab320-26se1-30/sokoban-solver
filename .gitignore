@@ -1,4 +1,5 @@
 __pycache__/*
 warehouses/*
 !warehouses/.gitkeep
-__pycache__/*
+images/*
+!images/.gitkeep
