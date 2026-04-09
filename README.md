@@ -85,33 +85,43 @@ flowchart TB
 flowchart TB
     CEA_Start(["check_elem_action_seq(warehouse, action_seq)"])
     CEA_Init["puzzle = SokobanPuzzle(warehouse)<br>state = puzzle.initial"]
+    CEA_note_init["IMPLEMENT: SokobanPuzzle.__init__()<br>store walls, targets, taboo cells, initial state"]
     CEA_MoreActions{"More actions<br>in action_seq?"}
     CEA_ValidCheck{"action in puzzle.actions(state,<br>ignore_taboo_cells=True)?"}
+    CEA_note_actions["IMPLEMENT: SokobanPuzzle.actions()<br>check wall collisions, box pushes;<br>ignore taboo cells when called here"]
     CEA_Apply["state = puzzle.result(state, action)"]
+    CEA_note_result["IMPLEMENT: SokobanPuzzle.result()<br>move worker, shift pushed box,<br>return new SokobanState"]
     CEA_Impossible["Return 'Impossible'"]
     CEA_ReturnStr["Return state.to_warehouse().__str__()"]
     CEA_End(["End"])
 
     CEA_Start --> CEA_Init
+    CEA_Init -.-> CEA_note_init
     CEA_Init --> CEA_MoreActions
     CEA_MoreActions -- Yes --> CEA_ValidCheck
+    CEA_ValidCheck -.-> CEA_note_actions
     CEA_ValidCheck -- No --> CEA_Impossible
     CEA_Impossible --> CEA_End
     CEA_ValidCheck -- Yes --> CEA_Apply
+    CEA_Apply -.-> CEA_note_result
     CEA_Apply --> CEA_MoreActions
     CEA_MoreActions -- No --> CEA_ReturnStr
     CEA_ReturnStr --> CEA_End
 
     CEA_Start:::terminal
     CEA_Init:::impl
+    CEA_note_init:::note
     CEA_MoreActions:::terminal
-    CEA_ValidCheck:::terminal
+    CEA_ValidCheck:::impl
+    CEA_note_actions:::note
     CEA_Apply:::impl
+    CEA_note_result:::note
     CEA_Impossible:::fail
     CEA_ReturnStr:::success
     CEA_End:::terminal
 
     classDef terminal fill:#D3D1C7,stroke:#5F5E5A,color:#2C2C2A
+    classDef note fill:#FAEEDA,stroke:#FAC775,color:#633806,font-size:11px
     classDef fail fill:#F7C1C1,stroke:#E24B4A,color:#501313
     classDef success fill:#C0DD97,stroke:#639922,color:#173404
     classDef impl fill:#EEEDFE,stroke:#534AB7,color:#3C3489
