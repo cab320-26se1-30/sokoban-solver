@@ -23,7 +23,7 @@
 ### Code flowchart
 
 ```mermaid
-flowchart TB
+flowchart LR
  subgraph SokobanPuzzle_Class["solve_weighted_sokoban — SokobanPuzzle & Init"]
         Start(["solve_weighted_sokoban(warehouse)"])
         InitPuzzle["Instantiate SokobanPuzzle<br>puzzle = SokobanPuzzle(warehouse)"]
