@@ -24,26 +24,26 @@
 
 ```mermaid
 flowchart TB
- subgraph SokobanPuzzle_Class["SokobanPuzzle Class & Init"]
+ subgraph SokobanPuzzle_Class["solve_weighted_sokoban — SokobanPuzzle & Init"]
         Start(["solve_weighted_sokoban(warehouse)"])
-        InitPuzzle["Instantiate SokobanPuzzle<br>problem = SokobanPuzzle(warehouse)"]
-        note_init["IMPLEMENT: SokobanPuzzle.__init__() mySokobanPuzzle.py<br>store walls, targets, taboo"]
-        GoalTestInitial["goal_test(initial)<br>check if already solved?"]
-        note_goal_init["EXTEND and IMPLEMENT Problem.goal_test()<br>using SokobanPuzzle class"]
+        InitPuzzle["Instantiate SokobanPuzzle<br>puzzle = SokobanPuzzle(warehouse)"]
+        note_init["IMPLEMENT: SokobanPuzzle.__init__()<br>store walls, targets, taboo cells, initial state"]
+        GoalTestInitial{"goal_test(puzzle.initial)<br>already solved?"}
+        note_goal_init["IMPLEMENT: SokobanPuzzle.goal_test()<br>box_positions == targets"]
         ReturnEmpty["Return [], 0<br>Puzzle already solved"]
   end
- subgraph Search_Algorithm["search.py - A* Graph Search"]
-        CallSearch["Call search.astar_graph_search<br>problem, h"]
-        note_h["DEFINE: h(node) as -SokobanPuzzle.value(node.state)"]
-        note_value["EXTEND and IMPLEMENT Problem.value()<br>using SokobanPuzzle class"]
-        CheckSolution{"Solution Found?<br>solution_node is None?"}
+ subgraph Search_Algorithm["search.py — A* Graph Search"]
+        CallSearch["search.astar_graph_search(puzzle, puzzle.h)"]
+        note_h["puzzle.h(node) returns weighted Manhattan<br>distance sum to nearest targets"]
+        note_value["SokobanPuzzle.h calls -self.value(node.state)<br>IMPLEMENT: value() for heuristic"]
+        CheckSolution{"solution is None?"}
   end
  subgraph Puzzle_Logic["Result Extraction & Return"]
-        ExtractSol["Extract Action Sequence<br>solution_node.solution()"]
-        GetCost["Get Path Cost<br>solution_node.path_cost"]
-        ReturnSuccess["Return action_sequence, total_cost"]
+        ExtractSol["action_seq = solution.solution()"]
+        GetCost["cost = solution.path_cost"]
+        ReturnSuccess["Return action_seq, cost"]
         ReturnImpossible["Return 'Impossible', None"]
-        End(["End"])
+        SWS_End(["End"])
   end
 
     Start --> InitPuzzle
@@ -51,17 +51,17 @@ flowchart TB
     InitPuzzle --> GoalTestInitial
     GoalTestInitial -.-> note_goal_init
     GoalTestInitial -- Yes --> ReturnEmpty
-    ReturnEmpty --> End
+    ReturnEmpty --> SWS_End
     GoalTestInitial -- No --> CallSearch
     CallSearch -.-> note_h
     note_h -.-> note_value
     CallSearch --> CheckSolution
-    CheckSolution -- Yes (None) --> ReturnImpossible
-    ReturnImpossible --> End
-    CheckSolution -- No (Node) --> ExtractSol
+    CheckSolution -- Yes --> ReturnImpossible
+    ReturnImpossible --> SWS_End
+    CheckSolution -- No --> ExtractSol
     ExtractSol --> GetCost
     GetCost --> ReturnSuccess
-    ReturnSuccess --> End
+    ReturnSuccess --> SWS_End
 
      InitPuzzle:::impl
      note_init:::note
@@ -75,9 +75,39 @@ flowchart TB
      GetCost:::impl
      Start:::terminal
      ReturnSuccess:::success
-     End:::terminal
+     SWS_End:::terminal
      ReturnImpossible:::fail
      ReturnEmpty:::success
+
+ subgraph CheckElemActionSeq["check_elem_action_seq(warehouse, action_seq)"]
+        CEA_Start(["check_elem_action_seq(warehouse, action_seq)"])
+        CEA_Init["puzzle = SokobanPuzzle(warehouse)<br>state = puzzle.initial"]
+        CEA_MoreActions{"More actions\nin action_seq?"}
+        CEA_ValidCheck{"action in puzzle.actions(state,\nignore_taboo_cells=True)?"}
+        CEA_Apply["state = puzzle.result(state, action)"]
+        CEA_Impossible["Return 'Impossible'"]
+        CEA_ReturnStr["Return state.to_warehouse().__str__()"]
+        CEA_End(["End"])
+  end
+
+    CEA_Start --> CEA_Init
+    CEA_Init --> CEA_MoreActions
+    CEA_MoreActions -- Yes --> CEA_ValidCheck
+    CEA_ValidCheck -- No --> CEA_Impossible
+    CEA_Impossible --> CEA_End
+    CEA_ValidCheck -- Yes --> CEA_Apply
+    CEA_Apply --> CEA_MoreActions
+    CEA_MoreActions -- No --> CEA_ReturnStr
+    CEA_ReturnStr --> CEA_End
+
+     CEA_Start:::terminal
+     CEA_Init:::impl
+     CEA_MoreActions:::terminal
+     CEA_ValidCheck:::terminal
+     CEA_Apply:::impl
+     CEA_Impossible:::fail
+     CEA_ReturnStr:::success
+     CEA_End:::terminal
 
     classDef terminal fill:#D3D1C7,stroke:#5F5E5A,color:#2C2C2A
     classDef note fill:#FAEEDA,stroke:#FAC775,color:#633806,font-size:11px
@@ -88,6 +118,7 @@ flowchart TB
     style Puzzle_Logic fill:#E1F5EE,stroke:#5DCAA5,color:#0F6E56
     style SokobanPuzzle_Class fill:#EEEDFE,stroke:#AFA9EC,color:#3C3489
     style Search_Algorithm fill:#E6F1FB,stroke:#85B7EB,color:#185FA5
+    style CheckElemActionSeq fill:#FEF3E2,stroke:#F0A500,color:#7A4E00
 ```
 
 ---
