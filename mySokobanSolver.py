@@ -182,38 +182,30 @@ class SokobanPuzzle(search.Problem):
 
         super().__init__(initial=initial)
 
-    def actions(self, state):
+    def actions(self, state, ignore_taboo_cells=False):
         """Return the actions that can be executed in the given
         state. The result would typically be a list, but if there are
         many actions, consider yielding them one at a time in an
         iterator, rather than building them all at once."""
         
         # copy state into worker position and box positions
-        worker_x, worker_y = state.worker
-        box_positions = state.box_positions
-
         valid_actions = []
 
         for action, (dx, dy) in self.possible_actions.items():
             # calculate new worker position
-            new_worker_pos = (worker_x + dx, worker_y + dy)
+            new_worker = (state.worker[0] + dx, state.worker[1] + dy)
 
             # check if worker is moving to an empty cell
-            if new_worker_pos not in self.walls and new_worker_pos not in box_positions:
+            if new_worker not in self.walls and new_worker not in state.box_positions:
                 valid_actions.append(action)
                 continue
 
             # check cell beyond box if pushing
-            if new_worker_pos in box_positions:
-                new_box_pos = (new_worker_pos[0] + dx, new_worker_pos[1] + dy)
+            if new_worker in state.box_positions:
+                new_box = (new_worker[0] + dx, new_worker[1] + dy)
                 
-                # check if the box's poisition is valid:
-                # - not a wall
-                # - not another box
-                # - not a taboo cell
-                if new_box_pos not in self.walls and \
-                   new_box_pos not in box_positions and \
-                   new_box_pos not in self.taboo_cells:
+                # check if the new box's position is valid
+                if new_box not in (self.walls | state.box_positions | (set() if ignore_taboo_cells else self.taboo_cells)):
                     valid_actions.append(action)
 
         return valid_actions
@@ -231,13 +223,13 @@ class SokobanPuzzle(search.Problem):
         # build new boxes, moving the pushed box if any
         new_boxes = set(state.boxes)
         if new_worker in box_positions:
-            new_box_pos = (new_worker[0] + dx, new_worker[1] + dy)
+            new_box = (new_worker[0] + dx, new_worker[1] + dy)
             # find and replace the pushed box entry (preserving its weight)
             pushed = next(b for b in new_boxes if (b[0], b[1]) == new_worker)
             new_boxes.remove(pushed)
-            new_boxes.add((new_box_pos[0], new_box_pos[1], pushed[2]))
+            new_boxes.add((new_box[0], new_box[1], pushed[2]))
 
-        return SokobanState(new_worker, new_boxes)
+        return SokobanState(new_worker, new_boxes, state.initial_warehouse)
 
     def goal_test(self, state):
         """Return True if the state is a goal. The default method compares the
@@ -309,7 +301,7 @@ def check_elem_action_seq(warehouse, action_seq):
     state = puzzle.initial
     
     for action in action_seq:
-        if not action in puzzle.actions(state):
+        if not action in puzzle.actions(state, ignore_taboo_cells=True):
             return 'Impossible'
         state = puzzle.result(state, action)
 
