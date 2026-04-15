@@ -3,3 +3,4 @@ warehouses/*
 !warehouses/.gitkeep
 images/*
 !images/.gitkeep
+report/*
